@@ -817,6 +817,7 @@ subroutine remap_all_state_vars(CS_remapping, CS_ALE, G, GV, h_old, h_new, Reg, 
         endif
         if (Tr%id_remap_cont > 0) then
           call post_data(Tr%id_remap_cont, work_cont, CS_ALE%diag)
+          !liao need to give h to postdata for tracer content diag
         endif
         if (Tr%id_remap_cont_2d > 0) then
           do j = G%jsc,G%jec ; do i = G%isc,G%iec

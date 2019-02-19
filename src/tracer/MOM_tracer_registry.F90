@@ -68,6 +68,9 @@ type, public :: tracer_type
 
   real, dimension(:,:,:), pointer :: advection_xy   => NULL() !< convergence of lateral advective tracer fluxes
                                                               !! [conc H s-1 ~> conc m s-1 or conc kg m-2 s-1]
+  real, dimension(:,:,:), pointer :: advectionc_xy  => NULL() !< convergence of lateral advective tracer fluxes concentration liao
+  real, dimension(:,:,:), pointer :: advectionc_x  => NULL()  !< convergence of lateral advective tracer fluxes concentration liao
+  real, dimension(:,:,:), pointer :: advectionc_y  => NULL()  !< convergence of lateral advective tracer fluxes concentration liao
   real, dimension(:,:,:), pointer :: diff_cont_xy   => NULL() !< convergence of lateral diffusive tracer fluxes
                                                               !! [conc H s-1 ~> conc m s-1 or conc kg m-2 s-1]
   real, dimension(:,:,:), pointer :: diff_conc_xy   => NULL() !< convergence of lateral diffusive tracer fluxes
@@ -112,6 +115,7 @@ type, public :: tracer_type
   integer :: id_adx = -1, id_ady = -1, id_dfx = -1, id_dfy = -1
   integer :: id_adx_2d = -1, id_ady_2d = -1, id_dfx_2d = -1, id_dfy_2d = -1
   integer :: id_adv_xy = -1, id_adv_xy_2d = -1
+  integer :: id_advc_xy = -1, id_advc_x = -1, id_advc_y = -1
   integer :: id_dfxy_cont = -1, id_dfxy_cont_2d = -1, id_dfxy_conc = -1
   integer :: id_remap_conc = -1, id_remap_cont = -1, id_remap_cont_2d = -1
   integer :: id_tendency = -1, id_trxh_tendency = -1, id_trxh_tendency_2d = -1
@@ -137,6 +141,7 @@ subroutine register_tracer(tr_ptr, Reg, param_file, HI, GV, name, longname, unit
                            cmor_name, cmor_units, cmor_longname, tr_desc, &
                            OBC_inflow, OBC_in_u, OBC_in_v, ad_x, ad_y, df_x, df_y, &
                            ad_2d_x, ad_2d_y, df_2d_x, df_2d_y, advection_xy, registry_diags, &
+                           advectionc_xy, advectionc_x, advectionc_y, &
                            flux_nameroot, flux_longname, flux_units, flux_scale, &
                            convergence_units, convergence_scale, cmor_tendprefix, diag_form, &
                            restart_CS, mandatory)
@@ -176,6 +181,9 @@ subroutine register_tracer(tr_ptr, Reg, param_file, HI, GV, name, longname, unit
                                                                 !! (CONC m3/s or CONC*kg/s)
 
   real, dimension(:,:,:), optional, pointer     :: advection_xy !< convergence of lateral advective tracer fluxes
+ real, dimension(:,:,:), optional, pointer     :: advectionc_xy !< convergence of lateral advective tracer fluxes !liao
+  real, dimension(:,:,:), optional, pointer     :: advectionc_x !< convergence of lateral advective tracer fluxes !liao
+  real, dimension(:,:,:), optional, pointer     :: advectionc_y !< convergence of lateral advective tracer fluxes !liao
   logical,              optional, intent(in)    :: registry_diags !< If present and true, use the registry for
                                                                 !! the diagnostics of this tracer.
   character(len=*),     optional, intent(in)    :: flux_nameroot !< Short tracer name snippet used construct the
@@ -295,7 +303,9 @@ subroutine register_tracer(tr_ptr, Reg, param_file, HI, GV, name, longname, unit
   if (present(df_2d_x)) then ; if (associated(df_2d_x)) Tr%df2d_x => df_2d_x ; endif
 
   if (present(advection_xy)) then ; if (associated(advection_xy)) Tr%advection_xy => advection_xy ; endif
-
+  if (present(advectionc_xy)) then ; if (associated(advectionc_xy)) Tr%advectionc_xy => advectionc_xy ; endif
+  if (present(advectionc_x)) then ;  if (associated(advectionc_x)) Tr%advectionc_x  => advectionc_x ;  endif
+  if (present(advectionc_y)) then ;  if (associated(advectionc_y)) Tr%advectionc_y  => advectionc_y ;  endif
   if (present(restart_CS)) then ; if (associated(restart_CS)) then
     ! Register this tracer to be read from and written to restart files.
     mand = .true. ; if (present(mandatory)) mand = mandatory
@@ -449,12 +459,29 @@ subroutine register_tracer_diagnostics(Reg, h, Time, diag, G, GV, use_ALE, diag_
         'Horizontal convergence of residual mean advective fluxes of '//&
         trim(lowercase(flux_longname)), conv_units, v_extensive=.true., &
         conversion=Tr%conv_scale)
+    !liao
+  Tr%id_advc_xy = register_diag_field("ocean_model",trim(shortnm)//'_advectionc_xy', &
+        diag%axesTL, Time, "Horizontal convergence of residual mean advective fluxes of "//trim(shortnm), &
+        trim(units)//' s-1')
+    Tr%id_advc_x  = register_diag_field("ocean_model",trim(shortnm)//'_advectionc_x', &
+        diag%axesTL, Time, "Horizontal x mean advective fluxes of "//trim(shortnm), &
+        trim(units)//' s-1')
+    Tr%id_advc_y  = register_diag_field("ocean_model",trim(shortnm)//'_advectionc_y', &
+        diag%axesTL, Time, "Horizontal y mean advective fluxes of "//trim(shortnm), &
+        trim(units)//' s-1')
+    !liao
     Tr%id_adv_xy_2d = register_diag_field('ocean_model', trim(shortnm)//"_advection_xy_2d", &
         diag%axesT1, Time, &
         'Vertical sum of horizontal convergence of residual mean advective fluxes of '//&
         trim(lowercase(flux_longname)), conv_units, conversion=Tr%conv_scale)
     if ((Tr%id_adv_xy > 0) .or. (Tr%id_adv_xy_2d > 0)) &
       call safe_alloc_ptr(Tr%advection_xy,isd,ied,jsd,jed,nz)
+    if (Tr%id_advc_xy > 0) &
+      call safe_alloc_ptr(Tr%advectionc_xy,isd,ied,jsd,jed,nz)
+    if (Tr%id_advc_x > 0) &
+      call safe_alloc_ptr(Tr%advectionc_x,isd,ied,jsd,jed,nz)
+    if (Tr%id_advc_y > 0) &
+      call safe_alloc_ptr(Tr%advectionc_y,isd,ied,jsd,jed,nz)
 
     Tr%id_tendency = register_diag_field('ocean_model', trim(shortnm)//'_tendency', &
         diag%axesTL, Time, &
@@ -657,7 +684,8 @@ subroutine post_tracer_diagnostics(Reg, h, diag_prev, diag, G, GV, dt)
         work3d(i,j,k)    = (Tr%t(i,j,k) - Tr%t_prev(i,j,k))*Idt
         tr%t_prev(i,j,k) =  Tr%t(i,j,k)
       enddo ; enddo ; enddo
-      call post_data(Tr%id_tendency, work3d, diag, alt_h = diag_prev%h_state)
+      !call post_data(Tr%id_tendency, work3d, diag, alt_h = diag_prev%h_state)
+       call post_data(Tr%id_tendency, work3d, diag)!liao, no need h for reinterpolation
     endif
     if ((Tr%id_trxh_tendency > 0) .or. (Tr%id_trxh_tendency_2d > 0)) then
       do k=1,nz ; do j=js,je ; do i=is,ie
@@ -705,6 +733,9 @@ subroutine post_tracer_transport_diagnostics(G, GV, Reg, h_diag, diag)
     if (Tr%id_dfx_2d > 0) call post_data(Tr%id_dfx_2d, Tr%df2d_x, diag)
     if (Tr%id_dfy_2d > 0) call post_data(Tr%id_dfy_2d, Tr%df2d_y, diag)
     if (Tr%id_adv_xy > 0) call post_data(Tr%id_adv_xy, Tr%advection_xy, diag, alt_h = h_diag)
+    if (Tr%id_advc_xy > 0) call post_data(Tr%id_advc_xy, Tr%advectionc_xy, diag)
+    if (Tr%id_advc_x > 0)  call post_data(Tr%id_advc_x, Tr%advectionc_x, diag)
+    if (Tr%id_advc_y > 0)  call post_data(Tr%id_advc_y, Tr%advectionc_y, diag)
     if (Tr%id_adv_xy_2d > 0) then
       work2d(:,:) = 0.0
       do k=1,nz ; do j=js,je ; do i=is,ie

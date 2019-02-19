@@ -2516,7 +2516,9 @@ subroutine diagnose_diabatic_diff_tendency(tv, h, temp_old, saln_old, dt, G, GV,
     work_3d(i,j,k) = (tv%T(i,j,k)-temp_old(i,j,k))*Idt
   enddo ; enddo ; enddo
   if (CS%id_diabatic_diff_temp_tend > 0) then
-    call post_data(CS%id_diabatic_diff_temp_tend, work_3d, CS%diag, alt_h = h)
+    !call post_data(CS%id_diabatic_diff_temp_tend, work_3d, CS%diag, alt_h = h)
+    call post_data(CS%id_diabatic_diff_temp_tend, work_3d, CS%diag)
+    !liao no h for diag in reinterpolation
   endif
 
   ! heat tendency
@@ -2613,7 +2615,9 @@ subroutine diagnose_boundary_forcing_tendency(tv, h, temp_old, saln_old, h_old, 
     do k=1,nz ; do j=js,je ; do i=is,ie
       work_3d(i,j,k) = (tv%T(i,j,k)-temp_old(i,j,k))*Idt
     enddo ; enddo ; enddo
-    call post_data(CS%id_boundary_forcing_temp_tend, work_3d, CS%diag, alt_h = h_old)
+    !call post_data(CS%id_boundary_forcing_temp_tend, work_3d, CS%diag, alt_h = h_old)
+    call post_data(CS%id_boundary_forcing_temp_tend, work_3d, CS%diag)
+    !liao no h for reinteropolation
   endif
 
   ! heat tendency
@@ -3123,21 +3127,21 @@ subroutine diabatic_driver_init(Time, G, GV, US, param_file, useALEalgorithm, di
   if (CS%useALEalgorithm) then
     CS%id_diabatic_diff_temp_tend = register_diag_field('ocean_model', &
         'diabatic_diff_temp_tendency', diag%axesTL, Time,              &
-        'Diabatic diffusion temperature tendency', 'degC s-1')
+        'Diabatic diffusion temperature concentration tendency', 'degC s-1')
     if (CS%id_diabatic_diff_temp_tend > 0) then
       CS%diabatic_diff_tendency_diag = .true.
     endif
 
     CS%id_diabatic_diff_saln_tend = register_diag_field('ocean_model',&
         'diabatic_diff_saln_tendency', diag%axesTL, Time,             &
-        'Diabatic diffusion salinity tendency', 'psu s-1')
+        'Diabatic diffusion salinity concentration tendency', 'psu s-1')
     if (CS%id_diabatic_diff_saln_tend > 0) then
       CS%diabatic_diff_tendency_diag = .true.
     endif
 
     CS%id_diabatic_diff_heat_tend = register_diag_field('ocean_model',                             &
         'diabatic_heat_tendency', diag%axesTL, Time,                                               &
-        'Diabatic diffusion heat tendency',                                                        &
+        'Diabatic diffusion heat content tendency',                                                        &
         'W m-2',cmor_field_name='opottempdiff',                                                    &
         cmor_standard_name='tendency_of_sea_water_potential_temperature_expressed_as_heat_content_'// &
                            'due_to_parameterized_dianeutral_mixing',                               &
@@ -3150,7 +3154,7 @@ subroutine diabatic_driver_init(Time, G, GV, US, param_file, useALEalgorithm, di
 
     CS%id_diabatic_diff_salt_tend = register_diag_field('ocean_model',                   &
         'diabatic_salt_tendency', diag%axesTL, Time,                                     &
-        'Diabatic diffusion of salt tendency',                                           &
+        'Diabatic diffusion of salt content tendency',                                           &
         'kg m-2 s-1',cmor_field_name='osaltdiff',                                        &
         cmor_standard_name='tendency_of_sea_water_salinity_expressed_as_salt_content_'// &
                            'due_to_parameterized_dianeutral_mixing',                     &

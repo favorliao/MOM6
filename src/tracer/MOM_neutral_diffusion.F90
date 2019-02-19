@@ -540,6 +540,7 @@ subroutine neutral_diffusion(G, GV, h, Coef_x, Coef_y, dt, Reg, CS)
     ! post tendency of tracer content
     if (tracer%id_dfxy_cont > 0) then
       call post_data(tracer%id_dfxy_cont, tendency(:,:,:), CS%diag)
+      ! liao need to give h to diag
     endif
 
     ! post depth summed tendency for tracer content
